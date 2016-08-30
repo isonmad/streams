@@ -603,16 +603,58 @@ ReadableStream(<var>underlyingSource</var> = {}, { <var>size</var>, <var>highWat
   consumer from acquiring a reader.
 </div>
 
-The <code>pipeTo</code> method is still in some flux. Its design depends on the design of writable streams, which
-<a href="#ws-not-ready-yet">are still undergoing spec churn</a>.
-
-For now, the reference implementation and tests provide a guide to what this method is generally intended to do: <a
-href="https://github.com/whatwg/streams/blob/master/reference-implementation/lib/readable-stream.js">reference-implementation/lib/readable-stream.js</a>,
-look for the <code>pipeTo</code> method. In addition to changing as the writable stream design changes, one major
-aspect of <code>pipeTo</code> not captured by the reference implementation is that it will operate via unobservable
-abstract operation calls, instead of using the JavaScript-exposed readable and writable stream APIs. This will better
-allow optimization and specialization. See <a href="https://github.com/whatwg/streams/issues/407">#407</a> and <a
-href="https://github.com/whatwg/streams/issues/97">#97</a> for more information.
+<emu-alg>
+  1. If ! IsReadableStream(*this*) is *false*, return a promise rejected with a *TypeError* exception.
+  1. If ! IsWritableStream(_dest_) is *false*, return a promise rejected with a *TypeError* exception.
+  1. Set _preventClose_ to ? ToBoolean(_preventClose_), set _preventAbort_ to ? ToBoolean(_preventAbort_), and set
+     _preventCancel_ to ToBoolean(_preventCancel_).
+  1. If ! IsReadableByteStreamController(*this*.[[readableStreamController]]) is true, let _reader_ be either ?
+     AcquireReadableStreamBYOBReader(*this*) or ? AcquireReadableStreamDefaultReader(*this*), at the user agent's
+     discretion.
+  1. Let _writer_ be ? AcquireWritableStreamDefaultWriter(_dest_).
+  1. Let _promise_ be a new promise.
+  1. <a>In parallel</a>, using _reader_ and _writer_, read all <a>chunks</a> from *this* and write them to _dest_. Due
+     to the locking provided by the reader and writer, the exact manner in which this happens is not observable to
+     author code, and so there is flexibility in how this is done. The following constraints apply regardless of the
+     exact algorithm used:
+     * Public API must not be used: while reading or writing, or performing any of the operations below, the
+       JavaScript-modifiable reader, writer, and stream APIs (i.e. methods on the appropriate prototypes) must not be
+       used. Instead, the streams must be manipulated directly.
+     * Backpressure must be enforced:
+       * While WritableStreamDefaultWriterGetDesiredSize(_writer_) is ≤ *0* or is *null*, the user agent must not read
+         from _reader_.
+       * If _reader_ is a <a>BYOB reader</a>, WritableStreamDefaultWriterGetDesiredSize(_writer_) should be used to
+         determine the size of the chunks read from _reader_.
+       * Otherwise, WritableStreamDefaultWriterGetDesiredSize(_writer_) may be used to determine the flow rate
+         heuristically, e.g. by delaying reads while it is judged to be "low" compared to the size of chunks that have
+         been typically read.
+     * Errors must be propagated forward:
+       * If *this*.[[state]] is or becomes `"errored"` and _preventAbort_ is *false*, perform !
+         WritableStreamAbort(_dest_, *this*.[[storedError]]). If the resulting promise fulfills, perform error cleanup
+         with *this*.[[storedError]]. Otherwise, perform error cleanup with the resulting promise rejection.
+       * If *this*.[[state]] is or becomes `"errored"` and _preventAbort_ is *true*, perform error cleanup with
+         *this*.[[storedError]].
+     * Errors must be propagated backward:
+       * If _dest_.[[state]] is or becomes `"errored"` and _preventCancel_ is *false*, perform !
+         ReadableStreamCancel(*this*, _dest_.[[storedError]]). If the resulting promise fulfills, perform error cleanup
+         with _dest_.[[storedError]]. Otherwise, perform error cleanup with the resulting promise rejection.
+       * If _dest_.[[state]] is or becomes `"errored"` and _preventCancel_ is *true*, perform error cleanup with
+         _dest_.[[storedError]].
+     * Closing must be propagated forward:
+       * If *this*.[[state]] is or becomes `"closed"` and _preventClose_ is *false*, perform !
+         WritableStreamDefaultWriterClose(_writer_). If the resulting promise fulfills, perform successful cleanup.
+         Otherwise, perform error cleanup with the resulting promise rejection.
+       * If *this*.[[state]] is or becomes `"closed"` and _preventClose_ is *true*, perform successful cleanup.
+     * <i>Cleanup</i>: if any of the above requirements ask to perform cleanup, then:
+       * Wait until any outstanding reads or writes finish (i.e. the corresponding promises settle). If that causes one
+         of the above error conditions to be true, jump back to those requirements instead of proceeding with cleanup.
+       * TODO factor out releasing the writer into an abstract op
+       * Perform ! ReadableStreamReaderGenericRelease(_reader_).
+       * Do not perform any more reads or writes.
+       * If this was an error cleanup, reject _promise_ with the given error.
+       * Otherwise, resolve _promise_ with *undefined*.
+  1. Return _promise_.
+</emu-alg>
 
 <h5 id="rs-tee" method for="ReadableStream">tee()</h5>
 
