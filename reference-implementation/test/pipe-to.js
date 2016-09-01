@@ -25,38 +25,6 @@ function promise_rejects(t, expectedReason, promise, msg) {
   });
 }
 
-test('Piping from a ReadableStream from which lots of data are readable synchronously', t => {
-  t.plan(3);
-
-  const rs = new ReadableStream({
-    start(c) {
-      for (let i = 0; i < 1000; ++i) {
-        c.enqueue(i);
-      }
-      c.close();
-    }
-  });
-
-  const ws = new WritableStream({}, new CountQueuingStrategy({ highWaterMark: 1000 }));
-
-  let pipeFinished = false;
-  rs.pipeTo(ws).then(
-    () => {
-      pipeFinished = true;
-      rs.getReader().closed.then(() => {
-        t.pass('readable stream should be closed after pipe finishes');
-      });
-      promise_fulfills(t, undefined, ws.getWriter().closed,
-                       'writable stream should be closed after pipe finishes');
-    }
-  )
-  .catch(e => t.error(e));
-
-  setTimeout(() => {
-    t.equal(pipeFinished, true, 'pipe should have finished before a setTimeout(,0) since it should only be microtasks');
-  }, 0);
-});
-
 test('Piping from a ReadableStream in readable state to a WritableStream in closing state', t => {
   t.plan(3);
 
@@ -763,39 +731,6 @@ test('Piping from an empty ReadableStream which becomes errored after a pipeTo c
 
     readableController.error(passedError);
   });
-});
-
-test('Piping to a duck-typed asynchronous "writable stream" works', t => {
-  // https://github.com/whatwg/streams/issues/80
-
-  t.plan(1);
-
-  const rs = sequentialReadableStream(5, { async: true });
-
-  const chunksWritten = [];
-  const writer = {
-    write(chunk) {
-      chunksWritten.push(chunk);
-      return Promise.resolve();
-    },
-    get ready() {
-      return Promise.resolve();
-    },
-    close() {
-      t.deepEqual(chunksWritten, [1, 2, 3, 4, 5]);
-      return Promise.resolve();
-    },
-    abort() {
-      t.fail('Should not call abort');
-    },
-    closed: new Promise(() => { })
-  };
-
-  const ws = {
-    getWriter() { return writer; }
-  };
-
-  rs.pipeTo(ws);
 });
 
 test('Piping to a stream that has been aborted passes through the error as the cancellation reason', t => {
