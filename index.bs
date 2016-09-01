@@ -645,6 +645,14 @@ ReadableStream(<var>underlyingSource</var> = {}, { <var>size</var>, <var>highWat
          WritableStreamDefaultWriterClose(_writer_). If the resulting promise fulfills, perform successful cleanup.
          Otherwise, perform error cleanup with the resulting promise rejection.
        * If *this*.[[state]] is or becomes `"closed"` and _preventClose_ is *true*, perform successful cleanup.
+     * Closing must be propagated backward:
+       * If _dest_.[[state]] is `"closing"` or `"closed"` and _preventCancel_ is *false*,
+         1. Let _destClosed_ be a new *TypeError*.
+         1. Perform ! ReadableStreamCancel(*this*, _destClosed_).
+         1. If the resulting promise fulfills, perform error cleanup with _destClosed_. Otherwise, perform error cleanup
+            with the resulting promise rejection.
+       * If _dest_.[[state]] is `"closing"` or `"closed"` and _preventCancel_ is *true*, perform error cleanup with a
+         new *TypeError*.
      * <i>Cleanup</i>: if any of the above requirements ask to perform cleanup, then:
        * Wait until any outstanding reads or writes finish (i.e. the corresponding promises settle). If that causes one
          of the above error conditions to be true, jump back to those requirements instead of proceeding with cleanup.
