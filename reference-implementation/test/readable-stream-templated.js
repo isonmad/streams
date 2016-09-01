@@ -1,6 +1,5 @@
 'use strict';
 const templatedRSClosed = require('./templated/readable-stream-closed.js');
-const templatedRSErrored = require('./templated/readable-stream-errored.js');
 const templatedRSErroredAsyncOnly = require('./templated/readable-stream-errored-async-only.js');
 const templatedRSTwoChunksClosed = require('./templated/readable-stream-two-chunks-closed.js');
 
@@ -19,20 +18,6 @@ templatedRSClosed('ReadableStream (closed via cancel)',
 );
 
 const theError = new Error('boo!');
-
-templatedRSErrored('ReadableStream (errored via call in start)',
-  () => new ReadableStream({
-    start(c) { c.error(theError); }
-  }),
-  theError
-);
-
-templatedRSErrored('ReadableStream (errored via returning a rejected promise in start)',
-  () => new ReadableStream({
-    start() { return Promise.reject(theError); }
-  }),
-  theError
-);
 
 templatedRSErroredAsyncOnly('ReadableStream (errored via returning a rejected promise in start) reader',
   () => new ReadableStream({
