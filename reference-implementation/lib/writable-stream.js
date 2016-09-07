@@ -60,6 +60,15 @@ class WritableStream {
 
 exports.WritableStream = WritableStream;
 
+Object.assign(exports, {
+  WritableStream,
+  IsWritableStream,
+  AcquireWritableStreamDefaultWriter,
+  WritableStreamDefaultWriterRelease,
+  WritableStreamAbort,
+  WritableStreamDefaultWriterClose
+});
+
 // Abstract operations for the WritableStream.
 
 function AcquireWritableStreamDefaultWriter(stream) {

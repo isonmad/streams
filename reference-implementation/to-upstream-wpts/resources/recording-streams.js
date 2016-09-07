@@ -12,6 +12,7 @@ self.recordingReadableStream = (extras = {}) => {
     },
     cancel(reason) {
       stream.events.push('cancel', reason);
+      stream.eventsWithoutPulls.push('cancel', reason);
 
       if (extras.cancel) {
         return extras.cancel(reason);
@@ -20,6 +21,7 @@ self.recordingReadableStream = (extras = {}) => {
   });
 
   stream.events = [];
+  stream.eventsWithoutPulls = [];
 
   return stream;
 };
