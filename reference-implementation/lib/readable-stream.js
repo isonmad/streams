@@ -7,7 +7,7 @@ const { createArrayFromList, createDataProperty, typeIsObject } = require('./hel
 const { rethrowAssertionErrorRejection } = require('./utils.js');
 const { DequeueValue, EnqueueValueWithSize, GetTotalQueueSize } = require('./queue-with-sizes.js');
 const { AcquireWritableStreamDefaultWriter, IsWritableStream, WritableStreamAbort, WritableStreamDefaultWriterClose,
-        WritableStreamDefaultWriterRelease } = require('./writable-stream.js');
+        WritableStreamDefaultWriterRelease, WritableStreamDefaultWriterWrite } = require('./writable-stream.js');
 
 const InternalCancel = Symbol('[[Cancel]]');
 const InternalPull = Symbol('[[Pull]]');
@@ -107,11 +107,43 @@ class ReadableStream {
 
     let shuttingDown = false;
 
+    // This is used to keep track of the spec's requirement that we wait for ongoing writes during shutdown.
+    let currentWrite;
+
     return new Promise((resolve, reject) => {
+      // Using reader and writer, read all chunks from this and write them to dest
+      // - Backpressure must be enforced
+      // - Shutdown must stop all activity
+      // TODO: test pipeLoop thoroughly
+      function pipeLoop() {
+        currentWrite = Promise.resolve();
+
+        if (shuttingDown === true) {
+          return;
+        }
+
+        return writer._readyPromise.then(() => {
+          return ReadableStreamDefaultReaderRead(reader).then(({ value, done }) => {
+            if (done === true) {
+              return;
+            }
+
+            currentWrite = WritableStreamDefaultWriterWrite(writer, value);
+            return currentWrite;
+          });
+        })
+        .then(pipeLoop);
+      }
+
+      pipeLoop().catch(err => {
+        currentWrite = Promise.resolve();
+        rethrowAssertionErrorRejection(err);
+      });
+
       // Errors must be propagated forward
       reader._closedPromise.catch(storedError => {
         if (preventAbort === false) {
-          performAsyncShutdown(WritableStreamAbort(dest, storedError), true, storedError);
+          performAsyncShutdown(() => WritableStreamAbort(dest, storedError), true, storedError);
         } else {
           performShutdown(true, storedError);
         }
@@ -120,7 +152,7 @@ class ReadableStream {
       // Errors must be propagated backward
       writer._closedPromise.catch(storedError => {
         if (preventCancel === false) {
-          performAsyncShutdown(ReadableStreamCancel(this, storedError), true, storedError);
+          performAsyncShutdown(() => ReadableStreamCancel(this, storedError), true, storedError);
         } else {
           performShutdown(true, storedError);
         }
@@ -129,7 +161,7 @@ class ReadableStream {
       // Closing must be propagated forward
       reader._closedPromise.then(() => {
         if (preventClose === false) {
-          performAsyncShutdown(WritableStreamDefaultWriterClose(writer));
+          performAsyncShutdown(() => WritableStreamDefaultWriterClose(writer));
         } else {
           performShutdown();
         }
@@ -140,37 +172,43 @@ class ReadableStream {
         const destClosed = new TypeError('the destination writable stream closed before all data could be piped to it');
 
         if (preventCancel === false) {
-          performAsyncShutdown(ReadableStreamCancel(this, destClosed), true, destClosed);
+          performAsyncShutdown(() => ReadableStreamCancel(this, destClosed), true, destClosed);
         } else {
           performShutdown(true, destClosed);
         }
       });
 
-      function performAsyncShutdown(promise, originalIsError, originalError) {
+      function waitForCurrentWrite() {
+        return currentWrite.catch(() => {});
+      }
+
+      function performAsyncShutdown(action, originalIsError, originalError) {
         if (shuttingDown === true) {
           return;
         }
         shuttingDown = true;
 
-        promise.then(
-          () => performShutdown(originalIsError, originalError),
-          newError => performShutdown(true, newError)
-        );
+        waitForCurrentWrite().then(() => {
+          action().then(
+            () => performShutdown(originalIsError, originalError),
+            newError => performShutdown(true, newError)
+          );
+        });
       }
 
       function performShutdown(isError, error) {
         shuttingDown = true;
 
-        // TODO wait for reads and writes
+        waitForCurrentWrite().then(() => {
+          WritableStreamDefaultWriterRelease(writer);
+          ReadableStreamReaderGenericRelease(reader);
 
-        WritableStreamDefaultWriterRelease(writer);
-        ReadableStreamReaderGenericRelease(reader);
-
-        if (isError) {
-          reject(error);
-        } else {
-          resolve(undefined);
-        }
+          if (isError) {
+            reject(error);
+          } else {
+            resolve(undefined);
+          }
+        });
       }
     });
   }

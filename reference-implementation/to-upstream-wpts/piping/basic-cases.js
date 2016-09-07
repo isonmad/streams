@@ -37,7 +37,7 @@ promise_test(() => {
 
 promise_test(() => {
 
-  const CHUNKS = 1000;
+  const CHUNKS = 10;
 
   const rs = new ReadableStream({
     start(c) {

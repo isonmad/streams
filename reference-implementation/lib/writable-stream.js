@@ -61,12 +61,13 @@ class WritableStream {
 exports.WritableStream = WritableStream;
 
 Object.assign(exports, {
-  WritableStream,
-  IsWritableStream,
   AcquireWritableStreamDefaultWriter,
-  WritableStreamDefaultWriterRelease,
+  IsWritableStream,
+  WritableStream,
   WritableStreamAbort,
-  WritableStreamDefaultWriterClose
+  WritableStreamDefaultWriterClose,
+  WritableStreamDefaultWriterRelease,
+  WritableStreamDefaultWriterWrite
 });
 
 // Abstract operations for the WritableStream.
