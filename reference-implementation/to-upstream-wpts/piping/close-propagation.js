@@ -24,6 +24,11 @@ promise_test(t => {
   .then(() => {
     assert_array_equals(rs.events, []);
     assert_array_equals(ws.events, ['close']);
+
+    return Promise.all([
+      rs.getReader().closed,
+      ws.getWriter().closed
+    ]);
   });
 
 }, 'Closing must be propagated forward: starts closed; preventClose = false; fulfilled close promise');
@@ -45,6 +50,11 @@ promise_test(t => {
   return promise_rejects(t, { name: 'error1' }, rs.pipeTo(ws), 'pipeTo must reject with the same error').then(() => {
     assert_array_equals(rs.events, []);
     assert_array_equals(ws.events, ['close']);
+
+    return Promise.all([
+      rs.getReader().closed,
+      promise_rejects(t, { name: 'error1' }, ws.getWriter().closed)
+    ]);
   });
 
 }, 'Closing must be propagated forward: starts closed; preventClose = false; rejected close promise');
@@ -65,6 +75,8 @@ promise_test(t => {
   .then(() => {
     assert_array_equals(rs.events, []);
     assert_array_equals(ws.events, []);
+
+    return rs.getReader().closed;
   });
 
 }, 'Closing must be propagated forward: starts closed; preventClose = true');
@@ -85,6 +97,11 @@ promise_test(t => {
 
       assert_array_equals(rs.eventsWithoutPulls, ['cancel', err]);
       assert_array_equals(ws.events, ['close']);
+
+      return Promise.all([
+        rs.getReader().closed,
+        ws.getWriter().closed
+      ]);
     }
   );
 
@@ -111,6 +128,11 @@ promise_test(t => {
 
     assert_array_equals(rs.eventsWithoutPulls, ['cancel', recordedError]);
     assert_array_equals(ws.events, ['close']);
+
+    return Promise.all([
+      rs.getReader().closed,
+      ws.getWriter().closed
+    ]);
   });
 
 }, 'Closing must be propagated backward: starts closed; preventCancel = false; rejected cancel promise');
@@ -127,6 +149,8 @@ promise_test(t => {
   return promise_rejects(t, new TypeError(), rs.pipeTo(ws, { preventCancel: true })).then(() => {
     assert_array_equals(rs.eventsWithoutPulls, []);
     assert_array_equals(ws.events, ['close']);
+
+    return ws.getWriter().closed;
   });
 
 }, 'Closing must be propagated backward: starts closed; preventCancel = true');

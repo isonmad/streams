@@ -1,8 +1,6 @@
 'use strict';
 const test = require('tape-catch');
 
-const sequentialReadableStream = require('./utils/sequential-rs.js');
-
 // TODO: many asserts in this file are unlabeled; we should label them.
 
 function promise_fulfills(t, expectedValue, promise, msg) {
@@ -24,47 +22,6 @@ function promise_rejects(t, expectedReason, promise, msg) {
     }
   });
 }
-
-test('Piping from a ReadableStream in readable state to a WritableStream in closing state', t => {
-  t.plan(3);
-
-  let cancelReason;
-  const rs = new ReadableStream({
-    start(c) {
-      c.enqueue('Hello');
-    },
-    cancel(reason) {
-      t.equal(reason.constructor, TypeError, 'underlying source cancel should have been called with a TypeError');
-      cancelReason = reason;
-    }
-  });
-
-  const ws = new WritableStream({
-    write() {
-      t.fail('Unexpected write call');
-    },
-    abort() {
-      t.fail('Unexpected abort call');
-    }
-  });
-
-  const writer = ws.getWriter();
-  writer.close().then(() => {
-    writer.releaseLock();
-
-    rs.pipeTo(ws).then(
-      () => t.fail('promise returned by pipeTo should not fulfill'),
-      r => {
-        t.equal(r, cancelReason,
-                'the pipeTo promise should reject with the same error as the underlying source cancel was called with');
-        rs.getReader().closed.then(() => {
-          t.pass('readable stream should be closed after pipe finishes');
-        });
-      }
-     )
-     .catch(e => t.error(e));
-  });
-});
 
 test('Piping from a ReadableStream in readable state to a WritableStream in errored state', t => {
   let cancelCalled = false;
@@ -220,42 +177,6 @@ test('Piping from a ReadableStream in the readable state which becomes errored a
     errorReadableStream(passedError);
   })
   .catch(e => t.error(e));
-});
-
-test('Piping from an empty ReadableStream which becomes non-empty after pipeTo call to a WritableStream in the ' +
-     'writable state', t => {
-  t.plan(2);
-
-  let controller;
-  let pullCount = 0;
-  const rs = new ReadableStream({
-    start(c) {
-      controller = c;
-    },
-    pull() {
-      ++pullCount;
-    },
-    cancel() {
-      t.fail('Unexpected cancel call');
-    }
-  });
-
-  const ws = new WritableStream({
-    write(chunk) {
-      t.equal(chunk, 'Hello', 'underlying sink write should be called with the single chunk');
-      t.equal(pullCount, 1, 'pull should have been called once');
-    },
-    close() {
-      t.fail('Unexpected close call');
-    },
-    abort() {
-      t.fail('Unexpected abort call');
-    }
-  });
-
-  rs.pipeTo(ws).then(() => t.fail('pipeTo promise should not fulfill'));
-
-  controller.enqueue('Hello');
 });
 
 test('Piping from an empty ReadableStream which becomes errored after pipeTo call to a WritableStream in the ' +
@@ -751,28 +672,6 @@ test('Piping to a stream that has been aborted passes through the error as the c
     t.equal(e.constructor, TypeError, 'pipeTo rejection reason should be a TypeError');
     t.equal(recordedCancelReason.constructor, TypeError, 'the recorded cancellation reason must be a TypeError');
     t.end();
-  })
-  .catch(e => t.error(e));
-});
-
-test('Piping to a stream that has been closed propagates a TypeError cancellation reason backward', t => {
-  let recordedCancelReason;
-  const rs = new ReadableStream({
-    cancel(reason) {
-      recordedCancelReason = reason;
-    }
-  });
-
-  const ws = new WritableStream();
-  const writer = ws.getWriter();
-  writer.close().then(() => {
-    writer.releaseLock();
-    rs.pipeTo(ws).catch(e => {
-      t.equal(e.constructor, TypeError, 'the rejection reason for the pipeTo promise should be a TypeError');
-      t.equal(recordedCancelReason.constructor, TypeError, 'the recorded cancellation reason should be a TypeError');
-      t.end();
-    })
-    .catch(e => t.error(e));
   })
   .catch(e => t.error(e));
 });

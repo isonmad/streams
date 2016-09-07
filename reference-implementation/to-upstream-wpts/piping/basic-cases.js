@@ -2,6 +2,7 @@
 
 if (self.importScripts) {
   self.importScripts('/resources/testharness.js');
+  self.importScripts('../resources/recording-streams.js');
 }
 
 test(() => {
@@ -77,3 +78,27 @@ promise_test(() => {
   // NOTE: no requirement on *when* the pipe finishes; that is left to implementations.
 
 }, 'Piping from a ReadableStream from which lots of chunks are synchronously readable');
+
+promise_test(() => {
+
+  let controller;
+  const rs = recordingReadableStream({
+    start(c) {
+      controller = c;
+    }
+  });
+
+  const ws = recordingWritableStream();
+
+  const pipePromise = rs.pipeTo(ws).then(() => {
+    assert_array_equals(ws.events, ['write', 'Hello', 'close']);
+  });
+
+  setTimeout(() => {
+    controller.enqueue('Hello');
+    setTimeout(() => controller.close(), 10);
+  }, 10);
+
+  return pipePromise;
+
+}, 'Piping from a ReadableStream for which a chunk becomes asynchronously readable after the pipeTo');

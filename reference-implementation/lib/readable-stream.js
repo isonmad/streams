@@ -119,13 +119,13 @@ class ReadableStream {
         currentWrite = Promise.resolve();
 
         if (shuttingDown === true) {
-          return;
+          return undefined;
         }
 
         return writer._readyPromise.then(() => {
           return ReadableStreamDefaultReaderRead(reader).then(({ value, done }) => {
             if (done === true) {
-              return;
+              return undefined;
             }
 
             currentWrite = WritableStreamDefaultWriterWrite(writer, value);

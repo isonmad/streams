@@ -13,7 +13,7 @@ const testsPath = path.resolve(__dirname, 'web-platform-tests/streams');
 const toUpstreamTestsPath = path.resolve(__dirname, 'to-upstream-wpts');
 
 wptRunner(toUpstreamTestsPath, { rootURL: 'streams/', setup })
-  // .then(() => wptRunner(testsPath, { rootURL: 'streams/', setup }))
+  .then(() => wptRunner(testsPath, { rootURL: 'streams/', setup }))
   .then(failures => process.exit(failures))
   .catch(e => {
     console.error(e.stack);
