@@ -703,6 +703,14 @@ function ReadableStreamHasDefaultReader(stream) {
   return true;
 }
 
+function ReaderGetClosedPromise(reader) {
+  if (reader._closedPromiseGotten_resolve !== undefined) {
+    reader._closedPromiseGotten_resolve();
+    reader._closedPromiseGotten_resolve = undefined;
+  }
+  return reader._closedPromise;
+}
+
 // Readers
 
 class ReadableStreamDefaultReader {
@@ -724,7 +732,7 @@ class ReadableStreamDefaultReader {
       return Promise.reject(defaultReaderBrandCheckException('closed'));
     }
 
-    return this._closedPromise;
+    return ReaderGetClosedPromise(this);
   }
 
   cancel(reason) {
@@ -788,7 +796,7 @@ class ReadableStreamBYOBReader {
       return Promise.reject(byobReaderBrandCheckException('closed'));
     }
 
-    return this._closedPromise;
+    return ReaderGetClosedPromise(this);
   }
 
   cancel(reason) {
@@ -869,6 +877,9 @@ function IsReadableStreamDefaultReader(x) {
 function ReadableStreamReaderGenericInitialize(reader, stream) {
   reader._ownerReadableStream = stream;
   stream._reader = reader;
+  reader._closedPromiseGotten = new Promise(resolve => {
+    reader._closedPromiseGotten_resolve = resolve;
+  });
 
   if (stream._state === 'readable') {
     defaultReaderClosedPromiseInitialize(reader);
@@ -1935,9 +1946,13 @@ function defaultReaderClosedPromiseInitialize(reader) {
 }
 
 function defaultReaderClosedPromiseInitializeAsRejected(reader, reason) {
-  reader._closedPromise = Promise.reject(reason);
   reader._closedPromise_resolve = undefined;
   reader._closedPromise_reject = undefined;
+  reader._closedPromise = new Promise((resolve, reject) => {
+    reader._closedPromiseGotten.then(() => {
+      reject(reason);
+    });
+  });
 }
 
 function defaultReaderClosedPromiseInitializeAsResolved(reader) {
@@ -1950,7 +1965,10 @@ function defaultReaderClosedPromiseReject(reader, reason) {
   assert(reader._closedPromise_resolve !== undefined);
   assert(reader._closedPromise_reject !== undefined);
 
-  reader._closedPromise_reject(reason);
+  const _closedPromise_reject = reader._closedPromise_reject;
+  reader._closedPromiseGotten.then(() => {
+    _closedPromise_reject(reason);
+  });
   reader._closedPromise_resolve = undefined;
   reader._closedPromise_reject = undefined;
 }
@@ -1959,7 +1977,14 @@ function defaultReaderClosedPromiseResetToRejected(reader, reason) {
   assert(reader._closedPromise_resolve === undefined);
   assert(reader._closedPromise_reject === undefined);
 
-  reader._closedPromise = Promise.reject(reason);
+  reader._closedPromiseGotten = new Promise(resolve => {
+    reader._closedPromiseGotten_resolve = resolve;
+  });
+  reader._closedPromise = new Promise((resolve, reject) => {
+    reader._closedPromiseGotten.then(() => {
+      reject(reason);
+    });
+  });
 }
 
 function defaultReaderClosedPromiseResolve(reader) {
