@@ -108,6 +108,11 @@ class ReadableStream {
       return Promise.reject(new TypeError('ReadableStream.prototype.pipeTo cannot be used on a locked WritableStream'));
     }
 
+    if (dest._state === 'closing' || dest._state === 'closed') {
+      return Promise.reject(
+        new TypeError('the destination WritableStream is already closed'));
+    }
+
     const reader = AcquireReadableStreamDefaultReader(this);
     const writer = AcquireWritableStreamDefaultWriter(dest);
 
@@ -171,17 +176,6 @@ class ReadableStream {
           shutdown();
         }
       });
-
-      // Closing must be propagated backward
-      if (dest._state === 'closing' || dest._state === 'closed') {
-        const destClosed = new TypeError('the destination writable stream closed before all data could be piped to it');
-
-        if (preventCancel === false) {
-          shutdownWithAction(() => ReadableStreamCancel(this, destClosed), true, destClosed);
-        } else {
-          shutdown(true, destClosed);
-        }
-      }
 
       function waitForCurrentWrite() {
         return currentWrite.catch(() => {});
