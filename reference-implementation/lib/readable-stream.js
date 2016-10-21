@@ -109,8 +109,11 @@ class ReadableStream {
     }
 
     if (dest._state === 'closing' || dest._state === 'closed') {
-      return Promise.reject(
-        new TypeError('the destination WritableStream is already closed'));
+      const destClosed = new TypeError('pipeTo: the destination WritableStream is already closed');
+      if (preventCancel === false) {
+        ReadableStreamCancel(this, destClosed);
+      }
+      return Promise.reject(destClosed);
     }
 
     const reader = AcquireReadableStreamDefaultReader(this);

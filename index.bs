@@ -605,7 +605,10 @@ ReadableStream(<var>underlyingSource</var> = {}, { <var>size</var>, <var>highWat
      _preventCancel_ to ! ToBoolean(_preventCancel_).
   1. If ! IsReadableStreamLocked(*this*) is *true*, return a promise rejected with a *TypeError* exception.
   1. If ! IsWritableStreamLocked(_dest_) is *true*, return a promise rejected with a *TypeError* exception.
-  1. If _dest_.[[state]] is `"closing"` or `"closed"`, return a promise rejected with a *TypeError* exception.
+  1. If _dest_.[[state]] is `"closing"` or `"closed"`, then
+       1. Let _destClosed_ be a *TypeError* exception.
+       1. If _preventCancel_ is *false*, perform ! ReadableStreamCancel(*this*, _destClosed_)
+       1. Return a promise rejected with _destClosed_.
   1. If ! IsReadableByteStreamController(*this*.[[readableStreamController]]) is true, let _reader_ be either !
      AcquireReadableStreamBYOBReader(*this*) or ! AcquireReadableStreamDefaultReader(*this*), at the user agent's
      discretion.
