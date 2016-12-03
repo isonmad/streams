@@ -868,6 +868,7 @@ called with argument <var>reason</var>, it performs the following steps:
 
 <emu-alg>
   1. Let _stream_ be _F_.[[stream]] and _teeState_ be _F_.[[teeState]].
+  1. Assert: _teeState_.[[canceled1]] is *false*.
   1. Set _teeState_.[[canceled1]] to *true*.
   1. Set _teeState_.[[reason1]] to _reason_.
   1. If _teeState_.[[canceled2]] is *true*,
@@ -884,6 +885,7 @@ called with argument <var>reason</var>, it performs the following steps:
 
 <emu-alg>
   1. Let _stream_ be _F_.[[stream]] and _teeState_ be _F_.[[teeState]].
+  1. Assert: _teeState_.[[canceled2]] is *false*.
   1. Set _teeState_.[[canceled2]] to *true*.
   1. Set _teeState_.[[reason2]] to _reason_.
   1. If _teeState_.[[canceled1]] is *true*,
@@ -1514,6 +1516,7 @@ ReadableStreamDefaultController(<var>stream</var>, <var>underlyingSource</var>, 
   1. Let _startResult_ be ? InvokeOrNoop(_underlyingSource_, `"start"`, « *this* »).
   1. Let _startPromise_ be <a>a promise resolved with</a> _startResult_:
     1. <a>Upon fulfillment</a>  of _startPromise_,
+      1. Assert: _controller_.[[started]] is *false*.
       1. Set _controller_.[[started]] to *true*.
       1. Assert: _controller_.[[pulling]] is *false*.
       1. Assert: _controller_.[[pullAgain]] is *false*.
@@ -1630,6 +1633,7 @@ nothrow>ReadableStreamDefaultControllerCallPullIfNeeded ( <var>controller</var> 
   1. Set _controller_.[[pulling]] to *true*.
   1. Let _pullPromise_ be ! PromiseInvokeOrNoop(_controller_.[[underlyingSource]], `"pull"`, « _controller_ »).
   1. <a>Upon fulfillment</a> of _pullPromise_,
+    1. Assert: _controller_.[[pulling]] is *true*.
     1. Set _controller_.[[pulling]] to *false*.
     1. If _controller_.[[pullAgain]] is *true*,
       1. Set _controller_.[[pullAgain]] to *false*.
@@ -1867,6 +1871,7 @@ ReadableByteStreamController(<var>stream</var>, <var>underlyingByteSource</var>,
   1. Let _startResult_ be ? InvokeOrNoop(_underlyingByteSource_, `"start"`, « *this* »).
   1. Let _startPromise_ be <a>a promise resolved with</a> _startResult_:
     1. <a>Upon fulfillment</a>  of _startPromise_,
+      1. Assert: _controller_.[[started]] is *false*.
       1. Set _controller_.[[started]] to *true*.
       1. Assert: _controller_.[[pulling]] is *false*.
       1. Assert: _controller_.[[pullAgain]] is *false*.
@@ -2111,6 +2116,7 @@ nothrow>ReadableByteStreamControllerCallPullIfNeeded ( <var>controller</var> )</
   1. Set _controller_.[[pulling]] to *true*.
   1. Let _pullPromise_ be ! PromiseInvokeOrNoop(_controller_.[[underlyingByteSource]], `"pull"`, « ‍_controller_ »).
   1. <a>Upon fulfillment</a> of _pullPromise_,
+    1. Assert: _controller_.[[pulling]] is *true*.
     1. Set _controller_.[[pulling]] to *false*.
     1. If _controller_.[[pullAgain]] is *true*,
       1. Set _controller_.[[pullAgain]] to *false*.
@@ -3237,6 +3243,7 @@ WritableStreamDefaultController(<var>stream</var>, <var>underlyingSink</var>, <v
   1. Let _startResult_ be ? InvokeOrNoop(_underlyingSink_, `"start"`, « *this* »).
   1. Let _startPromise_ be <a>a promise resolved with</a> _startResult_:
     1. <a>Upon fulfillment</a>  of _startPromise_,
+      1. Assert: _controller_.[[started]] is *false*.
       1. Set _controller_.[[started]] to *true*.
       1. Perform ! WritableStreamDefaultControllerAdvanceQueueIfNeeded(_controller_).
     1. <a>Upon rejection</a> of _startPromise_ with reason _r_,
@@ -3369,10 +3376,12 @@ nothrow>WritableStreamDefaultControllerProcessClose ( <var>controller</var> )</h
 nothrow>WritableStreamDefaultControllerProcessWrite ( <var>controller</var>, <var>chunk</var> )</h4>
 
 <emu-alg>
+  1. Assert: _controller_.[[writing]] is *false*.
   1. Set _controller_.[[writing]] to *true*.
   1. Let _sinkWritePromise_ be ! PromiseInvokeOrNoop(_controller_.[[underlyingSink]], `"write"`, « ‍_chunk_,
   _controller_ »).
   1. <a>Upon fulfillment</a> of _sinkWritePromise_,
+    1. Assert: _controller_.[[writing]] is *true*.
     1. Let _stream_ be _controller_.[[controlledWritableStream]].
     1. Let _state_ be _stream_.[[state]].
     1. If _state_ is `"errored"` or `"closed"`, return.
