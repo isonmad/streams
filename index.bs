@@ -817,11 +817,11 @@ noticable asymmetry between the two branches. [[!HTML]]
   1. Let _underlyingSource1_ be ! ObjectCreate(%ObjectPrototype%).
   1. Perform ! CreateDataProperty(_underlyingSource1_, `"pull"`, _pull_).
   1. Perform ! CreateDataProperty(_underlyingSource1_, `"cancel"`, _cancel1_).
-  1. Let _branch1Stream_ be ! Construct(`<a idl>ReadableStream</a>`, _underlyingSource1_).
+  1. Let _branch1Stream_ be ! Construct(`<a idl>ReadableStream</a>`, « ‍_underlyingSource1_ »).
   1. Let _underlyingSource2_ be ! ObjectCreate(%ObjectPrototype%).
   1. Perform ! CreateDataProperty(_underlyingSource2_, `"pull"`, _pull_).
   1. Perform ! CreateDataProperty(_underlyingSource2_, `"cancel"`, _cancel2_).
-  1. Let _branch2Stream_ be ! Construct(`<a idl>ReadableStream</a>`, _underlyingSource2_).
+  1. Let _branch2Stream_ be ! Construct(`<a idl>ReadableStream</a>`, « _underlyingSource2_ »).
   1. Set _pull_.[[branch1]] to _branch1Stream_.[[readableStreamController]].
   1. Set _pull_.[[branch2]] to _branch2Stream_.[[readableStreamController]].
   1. <a>Upon rejection</a> of _reader_.[[closedPromise]] with reason _r_,
