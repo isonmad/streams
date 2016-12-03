@@ -483,6 +483,7 @@ class WritableStreamDefaultController {
     const startResult = InvokeOrNoop(underlyingSink, 'start', [this]);
     Promise.resolve(startResult).then(
       () => {
+        assert(controller._started === false);
         controller._started = true;
         WritableStreamDefaultControllerAdvanceQueueIfNeeded(controller);
       },
@@ -639,11 +640,14 @@ function WritableStreamDefaultControllerProcessClose(controller) {
 }
 
 function WritableStreamDefaultControllerProcessWrite(controller, chunk) {
+  assert(controller._writing === false);
   controller._writing = true;
 
   const sinkWritePromise = PromiseInvokeOrNoop(controller._underlyingSink, 'write', [chunk, controller]);
   sinkWritePromise.then(
     () => {
+      assert(controller._writing === true);
+
       const stream = controller._controlledWritableStream;
       const state = stream._state;
       if (state === 'errored' || state === 'closed') {

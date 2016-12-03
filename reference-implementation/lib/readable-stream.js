@@ -406,6 +406,7 @@ function create_ReadableStreamTeeBranch1CancelFunction() {
   function f(reason) {
     const { _stream: stream, _teeState: teeState } = f;
 
+    assert(teeState.canceled1 === false);
     teeState.canceled1 = true;
     teeState.reason1 = reason;
     if (teeState.canceled2 === true) {
@@ -422,6 +423,7 @@ function create_ReadableStreamTeeBranch2CancelFunction() {
   function f(reason) {
     const { _stream: stream, _teeState: teeState } = f;
 
+    assert(teeState.canceled2 === false);
     teeState.canceled2 = true;
     teeState.reason2 = reason;
     if (teeState.canceled1 === true) {
@@ -865,6 +867,7 @@ class ReadableStreamDefaultController {
     const startResult = InvokeOrNoop(underlyingSource, 'start', [this]);
     Promise.resolve(startResult).then(
       () => {
+        assert(controller._started === false);
         controller._started = true;
 
         assert(controller._pulling === false);
@@ -993,6 +996,7 @@ function ReadableStreamDefaultControllerCallPullIfNeeded(controller) {
   const pullPromise = PromiseInvokeOrNoop(controller._underlyingSource, 'pull', [controller]);
   pullPromise.then(
     () => {
+      assert(controller._pulling === true);
       controller._pulling = false;
 
       if (controller._pullAgain === true) {
@@ -1191,6 +1195,7 @@ class ReadableByteStreamController {
     const startResult = InvokeOrNoop(underlyingByteSource, 'start', [this]);
     Promise.resolve(startResult).then(
       () => {
+        assert(controller._started === false);
         controller._started = true;
 
         assert(controller._pulling === false);
@@ -1393,6 +1398,7 @@ function ReadableByteStreamControllerCallPullIfNeeded(controller) {
   const pullPromise = PromiseInvokeOrNoop(controller._underlyingByteSource, 'pull', [controller]);
   pullPromise.then(
     () => {
+      assert(controller._pulling === true);
       controller._pulling = false;
 
       if (controller._pullAgain === true) {
